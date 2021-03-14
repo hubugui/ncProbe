@@ -47,7 +47,8 @@ func timestampFormat(timestamp string) string {
     layout := "2006-01-02T15:04:05.000+0800" 
     dt, err := time.Parse(layout, timestamp)
     if err == nil {
-        return dt.String()
+        td := dt.Format("2006-01-02 15:04:05")
+        return td
     } else {
         return "1970-01-01 00:00:00.000 +0000 UTC"
     }
