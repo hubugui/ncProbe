@@ -4,7 +4,7 @@ ncProbe scan Nomad's log to draw task/service healthy cycle figure.
 
 ## Build
 
-`go build *.go`
+`go build ncProbe.go`
 
 ## Run
 

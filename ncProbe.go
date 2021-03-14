@@ -21,7 +21,7 @@ import (
 
 const (
     TaskEvent_Unhealthy = "unhealthy"
-    TaskEvent_CancelingRestart = "canceling_restart"
+    TaskEvent_CancelingRestart = "healthy"
     TaskEvent_Restarting = "restarting"
 )
 
@@ -40,6 +40,17 @@ type Service struct {
 type TaskEvent struct {
     Task
     event string
+    eventType int
+}
+
+func timestampFormat(timestamp string) string {
+    layout := "2006-01-02T15:04:05.000+0800" 
+    dt, err := time.Parse(layout, timestamp)
+    if err == nil {
+        return dt.String()
+    } else {
+        return "1970-01-01 00:00:00.000 +0000 UTC"
+    }
 }
 
 func matchUnhealthy(line string) (bool, TaskEvent) {
@@ -47,6 +58,7 @@ func matchUnhealthy(line string) (bool, TaskEvent) {
     var time_limit int
 
     taskEvt.event = TaskEvent_Unhealthy
+    taskEvt.eventType = 1
     isMatch := strings.Contains(line, "consul.health: check became unhealthy.")        
     if isMatch {
         format := "%s [DEBUG] consul.health: check became unhealthy. Will restart if check doesn't become healthy: " +
@@ -56,6 +68,8 @@ func matchUnhealthy(line string) (bool, TaskEvent) {
         if count != 5 || err != nil { 
             return false, taskEvt
         }
+
+        taskEvt.timestamp = timestampFormat(taskEvt.timestamp)
         return isMatch, taskEvt
     }
 
@@ -66,6 +80,7 @@ func matchCancelingRestart(line string) (bool, TaskEvent) {
     var taskEvt TaskEvent
 
     taskEvt.event = TaskEvent_CancelingRestart
+    taskEvt.eventType = 2
     isMatch := strings.Contains(line, "consul.health: canceling restart because check became healthy")        
     if isMatch {
         format := "%s [DEBUG] consul.health: canceling restart because check became healthy: " +
@@ -75,6 +90,8 @@ func matchCancelingRestart(line string) (bool, TaskEvent) {
         if count != 4 || err != nil { 
             return false, taskEvt
         }
+
+        taskEvt.timestamp = timestampFormat(taskEvt.timestamp)
         return isMatch, taskEvt
     }
 
@@ -85,6 +102,7 @@ func matchRestarting(line string) (bool, TaskEvent) {
     var taskEvt TaskEvent
 
     taskEvt.event = TaskEvent_Restarting
+    taskEvt.eventType = 3
     isMatch := strings.Contains(line, "consul.health: restarting due to unhealthy check")        
     if isMatch {
         format := "%s [DEBUG] consul.health: restarting due to unhealthy check: " +
@@ -94,14 +112,16 @@ func matchRestarting(line string) (bool, TaskEvent) {
         if count != 4 || err != nil { 
             return false, taskEvt
         }
+
+        taskEvt.timestamp = timestampFormat(taskEvt.timestamp)
         return isMatch, taskEvt
     }
 
     return false, taskEvt
 }
 
-func parse(absPath string, taskMap map[string][]TaskEvent) (int, error) {
-    fmt.Printf("parse(\"%s\")\n", absPath)
+func parse(absPath string, taskEventMap map[string][]TaskEvent) (int, error) {
+    fmt.Printf("parse file: \"%s\"\n", absPath)
 
     fd, err := os.Open(absPath)
     if err != nil {
@@ -116,21 +136,21 @@ func parse(absPath string, taskMap map[string][]TaskEvent) (int, error) {
         // unhealthy
         ret, taskEvt := matchUnhealthy(line)
         if ret {
-            taskMap[taskEvt.task] = append(taskMap[taskEvt.task], taskEvt)
+            taskEventMap[taskEvt.task] = append(taskEventMap[taskEvt.task], taskEvt)
             continue
         }
 
         // canceling restart
         ret, taskEvt = matchCancelingRestart(line)
         if ret {
-            taskMap[taskEvt.task] = append(taskMap[taskEvt.task], taskEvt)
+            taskEventMap[taskEvt.task] = append(taskEventMap[taskEvt.task], taskEvt)
             continue
         }
 
         // restarting
         ret, taskEvt = matchRestarting(line)
         if ret {
-            taskMap[taskEvt.task] = append(taskMap[taskEvt.task], taskEvt)
+            taskEventMap[taskEvt.task] = append(taskEventMap[taskEvt.task], taskEvt)
             continue
         }        
     }
@@ -169,23 +189,35 @@ func probe(workFolder string) int {
     })
     if err != nil {
         fmt.Printf("filepath.Walk() returned %v\n", err)
-        ret = -1
+        ret = -2
     }
 
-    taskMap := make(map[string][]TaskEvent)
+    taskEventMap := make(map[string][]TaskEvent)
 
     // for each parse file
     for item := logFileQueue.Front(); item != nil; item = item.Next() {
-        retp, err := parse(item.Value.(string), taskMap)
+        retp, err := parse(item.Value.(string), taskEventMap)
         if retp != 0 {
             fmt.Printf("parse(\"%s\") occur error: %s\n", item.Value.(string), err)
         }
     }
 
-    // draw
-    for taskName, taskEventSlice := range taskMap {
-        for index, taskEvt := range taskEventSlice {
-            fmt.Printf("%s>%d, %s, %s\n", taskName, index, taskEvt.timestamp, taskEvt.event)
+    // save csv
+    for taskName, taskEventSlice := range taskEventMap {
+        outputFileName := taskName + ".csv"
+        fd, err := os.Create(outputFileName)
+        if err != nil {
+            continue
+        }
+        defer fd.Close()
+
+        fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
+
+        fd.WriteString("Timestamp, Type, Event, Index\n")
+        for index, taskEvt := range taskEventSlice { 
+            line := fmt.Sprintf("%s,%d,%s,%d\n", taskEvt.timestamp, taskEvt.eventType, taskEvt.event, index + 1)
+
+            fd.WriteString(line)
         }
     }
 
@@ -196,11 +228,11 @@ func main() {
     path := flag.String("p", "./", "path")
     flag.Parse()
 
-    fmt.Printf("ncProbe path is %s\n", *path)
+    fmt.Printf("ncProbe path is \"%s\"\n", *path)
 
     ret := probe(*path)
     if ret == 0 {
-        time.Sleep(time.Duration(2) * time.Second)
+        time.Sleep(time.Duration(1) * time.Second)
     } else {
         fmt.Println("probe failed: ", ret)
     }
