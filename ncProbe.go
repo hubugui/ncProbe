@@ -1,12 +1,5 @@
 package main
 
-// refer
-// https://en.wikipedia.org/wiki/Real_Time_Streaming_Protocol
-// https://tools.ietf.org/html/rfc2326
-
-// go lang test
-// https://tour.golang.org/flowcontrol/1
-
 import (
     "bufio"
     "path"
@@ -32,11 +25,6 @@ type Task struct {
     task string
 }
 
-type Service struct {
-    Task
-    time_limit int
-}
-
 type TaskEvent struct {
     Task
     event string
@@ -50,7 +38,7 @@ func timestampFormat(timestamp string) string {
         td := dt.Format("2006-01-02 15:04:05")
         return td
     } else {
-        return "1970-01-01 00:00:00.000 +0000 UTC"
+        return "1970-01-01 00:00:00"
     }
 }
 
@@ -199,7 +187,7 @@ func probe(workFolder string) int {
     for item := logFileQueue.Front(); item != nil; item = item.Next() {
         retp, err := parse(item.Value.(string), taskEventMap)
         if retp != 0 {
-            fmt.Printf("parse(\"%s\") occur error: %s\n", item.Value.(string), err)
+            fmt.Printf("parse: \"%s\" occur error: %s\n", item.Value.(string), err)
         }
     }
 
@@ -212,14 +200,16 @@ func probe(workFolder string) int {
         }
         defer fd.Close()
 
-        fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
-
         fd.WriteString("Timestamp, Type, Event, Index\n")
         for index, taskEvt := range taskEventSlice { 
             line := fmt.Sprintf("%s,%d,%s,%d\n", taskEvt.timestamp, taskEvt.eventType, taskEvt.event, index + 1)
 
             fd.WriteString(line)
+
+            fmt.Printf(line)
         }
+
+        // fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
     }
 
     return ret
