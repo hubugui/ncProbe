@@ -212,11 +212,12 @@ func probe(workFolder string) int {
         // fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
     }
 
+    draw()
     return ret
 }
 
 func main() {
-    path := flag.String("p", "./", "path")
+    path := flag.String("p", "nomadtmp", "path")
     flag.Parse()
 
     fmt.Printf("ncProbe path is \"%s\"\n", *path)
