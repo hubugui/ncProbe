@@ -48,8 +48,9 @@ func klineDataZoomBoth() *charts.Kline {
 
 	kline.SetGlobalOptions(
 		charts.WithTitleOpts(opts.Title{
-			Title: "DataZoom(inside&slider)",
+			Title: "basic line example", 
 		}),
+		//charts.WithTitleOpts(opts.Title{Title: "DataZoom(inside&slider)", Subtitle: "1: unhealth, 2: health, 3: restart"}),
 		charts.WithXAxisOpts(opts.XAxis{
 			SplitNumber: 20,
 		}),
@@ -87,10 +88,11 @@ func httpserver(w http.ResponseWriter, _ *http.Request) {
 	line.SetGlobalOptions(
 		charts.WithInitializationOpts(opts.Initialization{Theme: types.ThemeWesteros}),
 		charts.WithTitleOpts(opts.Title{
-					Title: "Health Event(inside&slider)",
+			Title: "Nomad Task Health Event(inside&slider)",
+			Subtitle: "1: unhealth, 2: health, 3: restart",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
-			SplitNumber: 20,
+			SplitNumber: 100,
 		}),
 		charts.WithYAxisOpts(opts.YAxis{
 			Scale: true,
@@ -131,10 +133,12 @@ func httpserver(w http.ResponseWriter, _ *http.Request) {
 	line.Render(w)
 }
 
-func draw(taskEventMap map[string][]TaskEvent) {
+func draw(taskEventMap map[string][]TaskEvent, port int) {
 	_g_taskEventMap = taskEventMap
+
+	fmt.Printf("please open \"http://localhost:%d\" to view results\n", port)
 
 	http.HandleFunc("/", httpserver)
 	http.HandleFunc("/kline", httpserverKline)
-	http.ListenAndServe(":8081", nil)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }

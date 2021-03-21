@@ -150,7 +150,7 @@ func parse(absPath string, taskEventMap map[string][]TaskEvent) (int, error) {
     return 0, nil
 }
 
-func probe(workFolder string) int {
+func probe(workFolder string, port int) int {
     ret := 0
     logFileQueue := list.New()
 
@@ -212,17 +212,19 @@ func probe(workFolder string) int {
         // fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
     }
 
-    draw(taskEventMap)
+    draw(taskEventMap, port)
     return ret
 }
 
 func main() {
-    path := flag.String("p", "nomadtmp", "path")
+    path := flag.String("w", "nomadtmp", "path")
+    port := flag.Int("p", 8081, "http port")
     flag.Parse()
 
     fmt.Printf("ncProbe path is \"%s\"\n", *path)
+    fmt.Printf("ncProbe port is %d\n", *port)
 
-    ret := probe(*path)
+    ret := probe(*path, *port)
     if ret == 0 {
         time.Sleep(time.Duration(1) * time.Second)
     } else {
