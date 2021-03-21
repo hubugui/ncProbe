@@ -1,11 +1,11 @@
 # ncProbe
 
-ncProbe scan Nomad's log to draw task/service healthy cycle figure.
+ncProbe scan Nomad's log dir to save health event to CSV file.
 
 ## Build
 
-`go build ncProbe.go`
+`go build -o ncProbe.exe`
 
 ## Run
 
-`./ncProbe`
+`./ncProbe.exe`

@@ -212,7 +212,7 @@ func probe(workFolder string) int {
         // fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
     }
 
-    draw()
+    draw(taskEventMap)
     return ret
 }
 
