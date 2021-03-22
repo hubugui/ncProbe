@@ -192,6 +192,9 @@ func probe(workFolder string, port int) int {
     }
 
     // save csv
+    if len(taskEventMap) == 0 {
+        fmt.Printf("not found task unhealthy or healthy or restart event.\n")
+    }
     for taskName, taskEventSlice := range taskEventMap {
         outputFileName := taskName + ".csv"
         fd, err := os.Create(outputFileName)
@@ -209,7 +212,7 @@ func probe(workFolder string, port int) int {
             fmt.Printf(line)
         }
 
-        // fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
+        fmt.Printf("save task:%s event to %s\n", taskName, outputFileName)
     }
 
     draw(taskEventMap, port)
